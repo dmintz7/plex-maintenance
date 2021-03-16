@@ -1,9 +1,7 @@
 from flask import Flask, request, make_response
 from plexapi.server import PlexServer
 from logging.handlers import RotatingFileHandler
-import trakt, os, subprocess, logging, sys, config, time
-trakt.core.CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".pytrakt.json")
-import trakt.movies, trakt.tv, trakt.sync, trakt.users, trakt.core
+import os, subprocess, logging, sys, config, time, re
 
 plex = PlexServer(config.plex_host, config.plex_api)
 app = Flask(__name__)
@@ -34,41 +32,20 @@ def api_command():
 
 	if section_id is not None:
 		try:
-			if config.remote_sodarr: directory = os.path.abspath(directory.replace(config.from_path, config.to_path).replace("\\","/"))
+			try:
+				rep = dict((re.escape(k), v) for k, v in config.remote_mapping.items()) 
+				pattern = re.compile("|".join(rep.keys()))
+				directory = pattern.sub(lambda m: rep[re.escape(m.group(0))], directory)
+			except:
+				pass
+			
 			command = '%s --scan --refresh --section %s --directory "%s"' % (config.plex_media_scanner_path, section_id, directory)
+			logger.debug("Running Command - %s" % command)
 			logger.info("Adding %s to Plex" % title)
 			process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
 			process.wait()
 			logger.debug("Adding to Plex, Finished")
-			if event == 'Download':
-				if json_text['isUpgrade']:
-					get_plex_duplicates()
-				
-				plex_video = None
-				for x in range(0, 20):
-					if plex_video is not None: break
-					plex_video = getPlexVideo(json_text)
-				
-				if plex_video is not None:
-					if not plex_video.isWatched:
-						if plex_video.type == "movie":
-							last_watched = movie_last_watched(plex_video.guid)
-						elif plex_video.type == "episode":
-							last_watched = episode_last_watched(plex_video.guid)
-						else:
-							last_watched = None	
-							
-						if last_watched is not None:
-							plex_video.markWatched()
-							logger.info("Last Watched in Trakt at %s. Marking as Watched in Plex" % last_watched)
-						else:
-							logger.info("Not Previously Watched in Trakt")
-				else:
-						logger.debug("Plex Video Not Found")
-						
-			elif event == 'Rename':
-				get_plex_duplicates()
-			
+			if (event == 'Download' and json_text['isUpgrade']) or event == 'Rename': get_plex_duplicates()
 		except Exception as e:
 			logger.error('Error on line {} - {} - {}'.format(type(e).__name__, sys.exc_info()[-1].tb_lineno, e))
 	return make_response("", 200)
@@ -127,89 +104,6 @@ def create_media_lists(movie):
 		return parts
 	except:
 		return None
-		
-def episode_last_watched(guid):
-	(id, provider, season, episode) = get_provider_id("tv", guid)
-	if provider is None: return None
-	trakt_user = trakt.users.User(config.trakt_username)
-	watched = trakt_user.watched_shows
-	for x in watched:
-		if str(x.ids['ids'][provider]) == str(id):
-			for z in x.seasons:
-				if z['number'] == int(season):
-					for y in z['episodes']:
-						if y['number'] == int(episode):
-							return y['last_watched_at']
-				
-def movie_last_watched(guid):
-	(id, provider) = get_provider_id("movie", guid)
-	if provider is None: return None
-	trakt_user = trakt.users.User(config.trakt_username)
-	watched = trakt_user.watched_movies
-	for x in watched:
-		if str(x.ids['ids'][provider]) == str(id): return x.last_watched_at
-
-def get_provider_id(type, guid):
-	logger.debug("Getting Provider and id from %s (%s)" % (guid, type))
-	if type == "movie":
-		id = guid[guid.find("//")+2:guid.find("?", guid.find("//")+2)]
-		if 'imdb' in guid:
-			x = guid.split('//')[1]
-			x = x.split('?')[0]
-			provider = 'imdb'
-		elif 'themoviedb' in guid:
-			x = guid.split('//')[1]
-			x = x.split('?')[0]
-			provider = 'tmdb'
-		else:
-			logger.info("Plex Video Not Matched")
-			id = None
-			provider = None
-		return (id, provider)
-	elif type == "tv":
-		id = guid[guid.find("//")+2:guid.find("?", guid.find("//")+2)].split("/")[0]
-		try:
-			season = guid[guid.find("//")+2:guid.find("?", guid.find("//")+2)].split("/")[1]
-			episode = guid[guid.find("//")+2:guid.find("?", guid.find("//")+2)].split("/")[2]
-		except:
-			season = None
-			episode = None
-			
-		if 'thetvdb' in guid:
-			x = guid.split('//')[1]
-			x = x.split('?')[0]
-			provider = 'tvdb'
-		elif 'themoviedb' in guid:
-			x = guid.split('//')[1]
-			x = x.split('?')[0]
-			provider = 'tmdb'
-		else:
-			logger.info("Plex Video Not Matched")
-			id = None
-			provider = None
-			season = None
-			episode = None
-		return (id, provider, season, episode)
-		
-def getPlexVideo(json_text):
-	try:
-		title = json_text['movie']['title']
-		filename = json_text['movieFile']['relativePath']
-	except:
-		title = json_text['episodes'][0]['title']
-		filename = json_text['episodeFile']['relativePath']
-	time.sleep(5)
-	for x in plex.library.search(title=title):
-		try:
-			logger.debug("Found %s" % x.__dict__)
-			for y in x.locations:
-				if y.split("/")[-1] == filename.split("\\")[-1]:
-					return x
-		except AttributeError:
-			pass
-		except Exception as e:
-			logger.error('Error on line {} - {} - {}'.format(type(e).__name__, sys.exc_info()[-1].tb_lineno, e))
-			pass
 
 def parese_json(json_text):
 	try:
