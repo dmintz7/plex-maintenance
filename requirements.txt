@@ -1,4 +1,2 @@
-Flask==1.1.2
 PlexAPI==3.2.0
-trakt.py==3.2.0
-trakt==2.13.0
+Flask==1.1.2
