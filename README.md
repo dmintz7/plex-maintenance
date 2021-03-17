@@ -6,9 +6,13 @@ If duplicates are discovered and the one or more of the files no longer exists, 
 
 Can work with Library Scans disabled in Plex Server Settings
 
-Allow Media Delation MUST be enabled in Plex Server Settings
+Allow Media Delation MUST be enabled in Plex Server 
 
 
+# Installation
+```
+bash -c "$(wget -qO - https://raw.githubusercontent.com/dmintz7/plex-maintenance/master/installer.sh)"
+```
 Created to work with Sonarr and Radarr
 
 Under Settings - Connections
