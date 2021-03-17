@@ -11,7 +11,7 @@ Allow Media Delation MUST be enabled in Plex Server
 
 # Installation
 ```
-bash -c "$(wget -qO - https://raw.githubusercontent.com/dmintz7/plex-maintenance/master/installer.sh)"
+(sudo) python3 -c "$(wget -qO - https://raw.githubusercontent.com/dmintz7/plex-maintenance/master/installer.py)"
 ```
 Created to work with Sonarr and Radarr
 
