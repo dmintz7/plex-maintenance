@@ -11,6 +11,11 @@ SERVICEFILE="/lib/systemd/system/plex-maintenance.service"
 # set default variables
 log_level="info"
 
+abort() {
+	echo "$@"
+	exit 1
+}
+
 install() {
 	echo
 	read -e -p "Directory to install into: " -i "/opt/plex-maintenance" FULL_PATH
@@ -85,8 +90,9 @@ configure() {
 	read -e -p "Path to Plex Media Scanner: " -i "$plex_media_scanner_path" plex_media_scanner_path
 	read -e -p "Remote Mapping: " -i "$remote_mapping" remote_mapping
 
-	plex_host="$PLEXSERVER:$PLEXPORT"
-	log_folder="${FULL_PATH}/Logs/"
+	plex_host="http://$PLEXSERVER:$PLEXPORT"
+	log_folder="${FULL_PATH}/logs/"
+	sudo mkdir -p $log_folder
 	save_config "$CONFIGVARS" "$CONFIGFILE"
 }
 
@@ -182,3 +188,4 @@ sudo systemctl enable plex-maintenance.service
 echo -n "Starting Service"
 echo
 sudo systemctl start plex-maintenance.service
+sudo chown $(id -u):$(id -g) "$FULL_PATH" || abort "failed, cannot continue"
