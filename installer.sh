@@ -119,8 +119,7 @@ create_service() {
 	echo "" >> $SERVICETEMP
 	echo "[Service]" >> $SERVICETEMP
 
-	read -e -p "What user runs Plex Media Server: " -i "plex" user
-	echo "User=${user}" >> $SERVICETEMP
+	echo "User=${plex_service_user}" >> $SERVICETEMP
 
 	echo "WorkingDirectory=${FULL_PATH}" >> $SERVICETEMP
 	echo "ExecStart=uwsgi --ini plex-maintenance.ini" >> $SERVICETEMP
@@ -158,6 +157,8 @@ configure
 echo
 echo -n "Configuration complete. Installing Service"
 echo
+read -e -p "What user runs Plex Media Server: " -i "plex" plex_service_user
+echo
 
 if [[ -f "$SERVICEFILE" ]]; then
 	echo
@@ -188,4 +189,4 @@ sudo systemctl enable plex-maintenance.service
 echo -n "Starting Service"
 echo
 sudo systemctl start plex-maintenance.service
-sudo chown $(id -u):$(id -g) "$FULL_PATH" || abort "failed, cannot continue"
+sudo chown $(id ${plex_service_user} -u):$(id ${plex_service_user} -g) -R "$FULL_PATH" || abort "failed, cannot continue"
