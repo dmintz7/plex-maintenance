@@ -1,7 +1,7 @@
 from flask import Flask, request, make_response
 from plexapi.server import PlexServer
 from logging.handlers import RotatingFileHandler
-import os, subprocess, logging, sys, config, time, re
+import os, subprocess, logging, sys, config, re
 
 plex = PlexServer(config.plex_host, config.plex_api)
 app = Flask(__name__)

@@ -77,7 +77,7 @@ def createFile():
 			f.write(line + (variables[variable]['user_input'] if variable else "") + '\n')
 		f.close()
 
-def createRemoteMapping()
+def createRemoteMapping():
 	remote_mapping = dict()
 	while True:
 		remote_path = input("Enter Remote Path:  ").strip()
@@ -87,7 +87,7 @@ def createRemoteMapping()
 	return remote_mapping
 
 def assignVariables():
-	if sys.platform == "linux" or platform == "linux2":
+	if sys.platform == "linux" or sys.platform == "linux2":
 		for key, value in variables.items():
 			if key == "root_dir": value['default'] =  "/opt/plex-maintenance"
 			if key == "plex_user": value['default'] =  "plex"
@@ -106,7 +106,6 @@ def assignVariables():
 				if value['default'] or value['user_input']:
 					value['user_input'] = value['default']
 					break
-	configfile= str(Path(variables['root_dir']['user_input'] + "/config.py"))
 
 assignVariables()
 install()
