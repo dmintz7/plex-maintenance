@@ -65,7 +65,7 @@ def createFile():
 			"quote_enclosed" : False,
 			"lines" :(
 				("[uwsgi]",""),
-				("module = plex_maintenance:app",""),
+				("module = plex-maintenance:app",""),
 				("master = true",""),
 				("processes = 5",""),
 				("http = ","bind_address"),
