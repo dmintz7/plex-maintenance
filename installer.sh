@@ -85,7 +85,7 @@ configure() {
 	read -e -p "Path to Plex Media Scanner: " -i "$plex_media_scanner_path" plex_media_scanner_path
 	read -e -p "Remote Mapping: " -i "$remote_mapping" remote_mapping
 
-	plex_host = "$PLEXSERVER$PLEXPORT"
+	plex_host="$PLEXSERVER:$PLEXPORT"
 	log_folder="${FULL_PATH}/Logs/"
 	save_config "$CONFIGVARS" "$CONFIGFILE"
 }
@@ -134,9 +134,9 @@ uwsgi_ini() {
 	echo "processes = 5" >> $INITEMP
 	echo "" >> $INITEMP
 
-	read -e -p "Bind Address: " -i "0.0.0.0" port
+	read -e -p "Bind Address: " -i "0.0.0.0" bind_address
 	read -e -p "Port Number: " -i "32500" port
-	echo "http = ${bind_ip}:${port}" >> $INITEMP
+	echo "http = ${bind_address}:${port}" >> $INITEMP
 
 	echo "socket = /tmp/plex-maintenance.sock" >> $INITEMP
 	echo "chmod-socket = 660" >> $INITEMP
