@@ -1,7 +1,7 @@
 from flask import Flask, request, make_response
 from plexapi.server import PlexServer
 from logging.handlers import RotatingFileHandler
-import os, subprocess, logging, sys, config, re
+import os, subprocess, logging, sys, config, json, re
 
 plex = PlexServer(config.plex_host, config.plex_api)
 app = Flask(__name__)
@@ -15,7 +15,7 @@ consoleHandler.setFormatter(formatter)
 logger.addHandler(consoleHandler)
 logging.getLogger("requests").setLevel(logging.INFO)
 logger.setLevel(config.log_level.upper())
-fileHandler = RotatingFileHandler(config.log_folder + "plex-maintenance.log", maxBytes=1024 * 1024 * 2, backupCount=1)
+fileHandler = RotatingFileHandler(config.log_folder + "/plex-maintenance.log", maxBytes=1024 * 1024 * 2, backupCount=1)
 fileHandler.setFormatter(formatter)
 logger.addHandler(fileHandler)
 
@@ -33,7 +33,7 @@ def api_command():
 	if section_id is not None:
 		try:
 			try:
-				rep = dict((re.escape(k), v) for k, v in config.remote_mapping.items()) 
+				rep = dict((re.escape(k), v) for k, v in json.loads(config.remote_mapping).items()) 
 				pattern = re.compile("|".join(rep.keys()))
 				directory = pattern.sub(lambda m: rep[re.escape(m.group(0))], directory)
 			except:

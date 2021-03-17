@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, shutil
 from pathlib import Path
 
 origin_repo="https://github.com/${git_owner:-dmintz7}/plex-maintenance"
@@ -13,7 +13,7 @@ variables = {
     "plex_media_scanner_path": {"description": "Path to Plex Media Scanner", "default" : "", "user_input" : ""},
     "remote_mapping": {"description": "Remote Mapping", "default" : "", "user_input" : ""},
     "plex_user": {"description": "User that runs Plex Media Server", "default" : "", "user_input" : ""},
-    "bind_address": {"description": "Bind Address and Port for plex-maintenance", "default" : "127.0.0.1:3500", "user_input" : ""},
+    "bind_address": {"description": "Bind Address and Port for plex-maintenance", "default" : "0.0.0.0:32500", "user_input" : ""},
 }
 
 def install():
@@ -21,15 +21,19 @@ def install():
 		print("Installing plex-maintenance into '%s'... " % variables['root_dir']['user_input'])
 		os.system('git clone --branch "master" "%s" "%s"' % (origin_repo, variables['root_dir']['user_input']))
 		
-		os.makedirs(variables['log_folder']['user_input'])
+		if not os.path.exists(variables['log_folder']['user_input']): os.makedirs(variables['log_folder']['user_input'])
 		print("Done")
+		return True
 	else:
-		print("plex-maintenance already installed")
+		print("plex-maintenance already installed, Updating")
+		os.system('git pull')
+		return False
 
 def createFile():
 	files = {
 		"config": {
 			"file": str(Path(variables['root_dir']['user_input']+"/config.py")),
+			"quote_enclosed" : True,
 			"lines" :(
 				("log_level=","log_level"),
 				("log_folder=","log_folder"),
@@ -43,6 +47,7 @@ def createFile():
 		},
 		"service": {
 			"file": "/lib/systemd/system/plex-maintenance.service",
+			"quote_enclosed" : False,
 			"lines" :(
 				("[Unit]",""),
 				("Description=Plex Maintenance",""),
@@ -56,34 +61,54 @@ def createFile():
 			)
 		},
 		"uwsgi": {
-		"file": str(Path(variables['root_dir']['user_input']+"/plex-maintenance.ini")),
-		"lines" :(
-			("[uwsgi]",""),
-			("module = plex_maintenance:app",""),
-			("master = true",""),
-			("processes = 5",""),
-			("http = ","bind_address"),
-			("socket = /tmp/plex-maintenance.sock",""),
-			("chmod-socket = 660",""),
-			("vacuum = true",""),
-			("die-on-term = true",""),
-		)
+			"file": str(Path(variables['root_dir']['user_input']+"/plex-maintenance.ini")),
+			"quote_enclosed" : False,
+			"lines" :(
+				("[uwsgi]",""),
+				("module = plex_maintenance:app",""),
+				("master = true",""),
+				("processes = 5",""),
+				("http = ","bind_address"),
+				("socket = /tmp/plex-maintenance.sock",""),
+				("chmod-socket = 660",""),
+				("vacuum = true",""),
+				("die-on-term = true",""),
+			)
 		}
 	}
 
 	for key, value in files.items():
-		f = open(value['file'], "a")
+		f = open(value['file'] + '.tmp', "a")
 		for line, variable in value['lines']:
-			f.write(line + (variables[variable]['user_input'] if variable else "") + '\n')
+			temp = (variables[variable]['user_input'] if variable else "")
+			if value['quote_enclosed']: temp = '"%s"' % temp
+			f.write("%s%s\n" % (line, temp))
 		f.close()
+		shutil.move(value['file'] + '.tmp', value['file'])
 
+def ask_user(question):
+	check = str(input(question + " (Y/N): ")).lower().strip()
+	try:
+		if check[0] == 'y':
+			return True
+		elif check[0] == 'n':
+			return False
+		else:
+			print('Invalid Input')
+			return ask_user(question)
+	except Exception as error:
+		print("Please enter valid inputs")
+		print(error)
+		return ask_user(question)
+		
 def createRemoteMapping():
 	remote_mapping = dict()
-	while True:
-		remote_path = input("Enter Remote Path:  ").strip()
-		if remote_path == '': break
-		local_path = input("Enter Local Path:  ").strip()
-		remote_mapping[remote_path] = local_path
+	if ask_user("Would you like to setup remote paths?  "):
+		while True:
+			remote_path = input("Enter Remote Path:  ").strip()
+			local_path = input("Enter Local Path:   ").strip()
+			remote_mapping[remote_path] = local_path
+			if not ask_user("Add Another?  "): break
 	return remote_mapping
 
 def assignVariables():
@@ -98,16 +123,20 @@ def assignVariables():
 		sys.exit()
 
 	for key, value in variables.items():
-		if key == "remote_mapping":
-			createRemoteMapping()
-		else:
-			while True:
+		while True:
+			if key == "remote_mapping":
+				value['user_input'] = createRemoteMapping()
+				break
+			else:
 				value['user_input'] = input(value['description'] + (": (" + value['default'] + ")  " if value['default'] else ":  ")) or value['default']
-				if value['default'] or value['user_input']:
-					value['user_input'] = value['default']
-					break
+			if value['default'] or value['user_input']:
+				if not value['user_input']: value['user_input'] = value['default']
+				break
 
 assignVariables()
 install()
 createFile()
-os.system("chown $(id ${%s} -u):$(id ${%s} -g) -R '%s'" % (variables['plex_user']['user_input'], variables['plex_user']['user_input'], variables['root_dir']['user_input']))
+os.system("sudo systemctl daemon-reload")
+os.system("sudo systemctl enable plex-maintenance.service")
+print("Starting Service")
+os.system("sudo systemctl start plex-maintenance.service")
