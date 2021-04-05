@@ -33,7 +33,8 @@ def api_command():
 	if section_id is not None:
 		try:
 			try:
-				rep = dict((re.escape(k), v) for k, v in json.loads(config.remote_mapping).items()) 
+				directory = os.path.join(*directory.replace('\\','/').split('/'))
+				rep = dict((re.escape(k), v) for k, v in json.loads(config.remote_mapping.replace("\'", "\"")).items()) 
 				pattern = re.compile("|".join(rep.keys()))
 				directory = pattern.sub(lambda m: rep[re.escape(m.group(0))], directory)
 			except:
