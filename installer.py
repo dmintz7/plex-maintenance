@@ -20,6 +20,7 @@ def install():
 	if not os.path.exists(variables['root_dir']['user_input']):
 		print("Installing plex-maintenance into '%s'... " % variables['root_dir']['user_input'])
 		os.system('git clone --branch "master" "%s" "%s"' % (origin_repo, variables['root_dir']['user_input']))
+		os.system('sudo pip3 install -r %s/requirements.txt' % variables['root_dir']['user_input'])
 		
 		if not os.path.exists(variables['log_folder']['user_input']): os.makedirs(variables['log_folder']['user_input'])
 		print("Done")
